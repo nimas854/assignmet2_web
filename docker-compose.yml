@@ -1,0 +1,92 @@
+# Complete system: gateway -> booking-service -> trail-service,
+# each service with its OWN database. Start everything with:
+#   docker compose up --build
+# Only the gateway is reachable from outside Docker.
+services:
+  # ---------- Service B: Trails ----------
+  trail-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${TRAIL_DB_USER}
+      POSTGRES_PASSWORD: ${TRAIL_DB_PASSWORD}
+      POSTGRES_DB: ${TRAIL_DB_NAME}
+    volumes:
+      - trail-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TRAIL_DB_USER} -d ${TRAIL_DB_NAME}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  trail-service:
+    build:
+      context: .
+      dockerfile: trail-service/Dockerfile
+    environment:
+      TRAIL_SERVICE_PORT: ${TRAIL_SERVICE_PORT}
+      TRAIL_DB_HOST: trail-db
+      TRAIL_DB_PORT: "5432"
+      TRAIL_DB_USER: ${TRAIL_DB_USER}
+      TRAIL_DB_PASSWORD: ${TRAIL_DB_PASSWORD}
+      TRAIL_DB_NAME: ${TRAIL_DB_NAME}
+    depends_on:
+      trail-db:
+        condition: service_healthy
+
+  # ---------- Service A: Bookings ----------
+  booking-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${BOOKING_DB_USER}
+      POSTGRES_PASSWORD: ${BOOKING_DB_PASSWORD}
+      POSTGRES_DB: ${BOOKING_DB_NAME}
+    volumes:
+      - booking-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${BOOKING_DB_USER} -d ${BOOKING_DB_NAME}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  booking-service:
+    build:
+      context: .
+      dockerfile: booking-service/Dockerfile
+    environment:
+      BOOKING_SERVICE_PORT: ${BOOKING_SERVICE_PORT}
+      BOOKING_DB_HOST: booking-db
+      BOOKING_DB_PORT: "5432"
+      BOOKING_DB_USER: ${BOOKING_DB_USER}
+      BOOKING_DB_PASSWORD: ${BOOKING_DB_PASSWORD}
+      BOOKING_DB_NAME: ${BOOKING_DB_NAME}
+      # Where to find Service B (Docker Compose resolves the service name).
+      TRAIL_SERVICE_ADDR: trail-service:${TRAIL_SERVICE_PORT}
+      # Resilience settings (optional - defaults shown).
+      TRAIL_TIMEOUT_MS: ${TRAIL_TIMEOUT_MS:-2000}
+      TRAIL_MAX_ATTEMPTS: ${TRAIL_MAX_ATTEMPTS:-3}
+      TRAIL_BACKOFF_MS: ${TRAIL_BACKOFF_MS:-200}
+      BREAKER_FAILURES: ${BREAKER_FAILURES:-3}
+      BREAKER_OPEN_SECONDS: ${BREAKER_OPEN_SECONDS:-10}
+    depends_on:
+      booking-db:
+        condition: service_healthy
+
+  # ---------- API Gateway ----------
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    environment:
+      GATEWAY_PORT: ${GATEWAY_PORT}
+      TRAIL_SERVICE_ADDR: trail-service:${TRAIL_SERVICE_PORT}
+      BOOKING_SERVICE_ADDR: booking-service:${BOOKING_SERVICE_PORT}
+      GATEWAY_TIMEOUT_SECONDS: ${GATEWAY_TIMEOUT_SECONDS:-10}
+    ports:
+      - "${GATEWAY_PORT}:${GATEWAY_PORT}"
+    depends_on:
+      - trail-service
+      - booking-service
+
+volumes:
+  trail-db-data:
+  booking-db-data:

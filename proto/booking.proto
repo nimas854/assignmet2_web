@@ -1,0 +1,28 @@
+syntax = "proto3";
+package booking;
+option go_package = "trailbooking/gen/bookingpb";
+
+message Booking {
+  string id = 1;
+  string trail_id = 2;
+  string trail_name = 3;   // filled in by calling Trail Service (not stored)
+  string hiker_name = 4;
+  string hike_date = 5;    // YYYY-MM-DD
+  int32 group_size = 6;
+}
+
+message CreateBookingRequest { string trail_id = 1; string hiker_name = 2; string hike_date = 3; int32 group_size = 4; }
+message GetBookingRequest    { string id = 1; }
+message UpdateBookingRequest { string id = 1; string hiker_name = 2; string hike_date = 3; int32 group_size = 4; }
+message DeleteBookingRequest { string id = 1; }
+message DeleteBookingResponse {}
+message ListBookingsRequest {}
+message ListBookingsResponse { repeated Booking bookings = 1; }
+
+service BookingService {
+  rpc CreateBooking(CreateBookingRequest) returns (Booking);
+  rpc GetBooking(GetBookingRequest) returns (Booking);
+  rpc UpdateBooking(UpdateBookingRequest) returns (Booking);
+  rpc DeleteBooking(DeleteBookingRequest) returns (DeleteBookingResponse);
+  rpc ListBookings(ListBookingsRequest) returns (ListBookingsResponse);
+}

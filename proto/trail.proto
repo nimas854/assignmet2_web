@@ -1,0 +1,27 @@
+syntax = "proto3";
+package trail;
+option go_package = "trailbooking/gen/trailpb";
+
+message Trail {
+  string id = 1;
+  string name = 2;
+  string difficulty = 3;   // EASY | MODERATE | HARD
+  double distance_km = 4;
+  int32 max_group_size = 5;
+}
+
+message CreateTrailRequest { string name = 1; string difficulty = 2; double distance_km = 3; int32 max_group_size = 4; }
+message GetTrailRequest    { string id = 1; }
+message UpdateTrailRequest { string id = 1; string name = 2; string difficulty = 3; double distance_km = 4; int32 max_group_size = 5; }
+message DeleteTrailRequest { string id = 1; }
+message DeleteTrailResponse {}
+message ListTrailsRequest {}
+message ListTrailsResponse { repeated Trail trails = 1; }
+
+service TrailService {
+  rpc CreateTrail(CreateTrailRequest) returns (Trail);
+  rpc GetTrail(GetTrailRequest) returns (Trail);
+  rpc UpdateTrail(UpdateTrailRequest) returns (Trail);
+  rpc DeleteTrail(DeleteTrailRequest) returns (DeleteTrailResponse);
+  rpc ListTrails(ListTrailsRequest) returns (ListTrailsResponse);
+}
